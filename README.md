@@ -22,9 +22,7 @@ mutation {
 
 
 📌 3️⃣ Lấy sinh viên theo ID (Query)
-graphql
-Sao chép
-Chỉnh sửa
+
 query {
   student(id: "1") {
     id
@@ -37,9 +35,7 @@ query {
 }
 
 📌 4️⃣ Tìm kiếm sinh viên theo trường (Ví dụ: tìm theo name)
-graphql
-Sao chép
-Chỉnh sửa
+
 query {
   searchStudents(field: "name", value: "Nguyen Van A") {
     id
