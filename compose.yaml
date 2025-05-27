@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    env_file: .env
+    ports:
+      - "$DB_PORT:$DB_PORT"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $DB_USER" ]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "$APP_PORT:$APP_PORT"
+    env_file: .env
+    # volumes:
+    #   - .:/app
+
+volumes:
+  pgdata:

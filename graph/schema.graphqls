@@ -1,0 +1,132 @@
+# Enums
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum GradeType {
+  ORAL
+  FIFTEEN_MINUTES
+  MIDTERM
+  FINAL
+}
+
+enum AcademicPerformance {
+  EXCELLENT
+  GOOD
+  AVERAGE
+  WEAK
+  POOR
+}
+
+# Student
+type Student {
+  id: ID!
+  studentId: String!
+  name: String!
+  dateOfBirth: String!
+  gender: Gender!
+  class: String!
+
+  # Computed fields
+  subjectAverages: [SubjectAverage!]!
+  overallAverage: Float!
+  academicPerformance: AcademicPerformance!
+}
+
+input NewStudentInput {
+  studentId: String!
+  name: String!
+  dateOfBirth: String!
+  gender: Gender!
+  class: String!
+}
+
+input UpdateStudentInput {
+  name: String
+  dateOfBirth: String
+  gender: Gender
+  class: String
+}
+
+# Subject
+type Subject {
+  id: ID!
+  subjectId: String!
+  name: String!
+}
+
+input NewSubjectInput {
+  subjectId: String!
+  name: String!
+}
+
+input UpdateSubjectInput {
+  name: String
+}
+
+# Grade
+type Grade {
+  id: ID!
+  student: Student!
+  subject: Subject!
+  gradeType: GradeType!
+  score: Float!
+}
+
+input NewGradeInput {
+  studentId: String!
+  subjectId: String!
+  gradeType: GradeType!
+  score: Float!
+}
+
+input UpdateGradeInput {
+  score: Float!
+}
+
+# Computed fields for averages
+type SubjectAverage {
+  subject: Subject!
+  averageScore: Float!
+}
+
+# Query
+type Query {
+  # Student
+  students: [Student!]!
+  student(id: ID!): Student
+  searchStudents(field: String!, value: String!): [Student!]!
+
+  # Subject
+  subjects: [Subject!]!
+  subject(id: ID!): Subject
+
+  # Grade
+  grades: [Grade!]!
+  gradesByStudent(studentId: String!): [Grade!]!
+  reportCard(studentId: String!): [Grade!]!
+
+  # Reports
+  studentsByClass(class: String!): [Student!]!
+  studentsByPerformance(performance: AcademicPerformance!): [Student!]!
+}
+
+# Mutation
+type Mutation {
+  # Student
+  addStudent(input: NewStudentInput!): Student!
+  updateStudent(id: ID!, input: UpdateStudentInput!): Student!
+  deleteStudent(id: ID!): Boolean!
+
+  # Subject
+  addSubject(input: NewSubjectInput!): Subject!
+  updateSubject(id: ID!, input: UpdateSubjectInput!): Subject!
+  deleteSubject(id: ID!): Boolean!
+
+  # Grade
+  addGrade(input: NewGradeInput!): Grade!
+  updateGrade(id: ID!, input: UpdateGradeInput!): Grade!
+  deleteGrade(id: ID!): Boolean!
+}
