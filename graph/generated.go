@@ -47,6 +47,11 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	BaseResponseView struct {
+		Message func(childComplexity int) int
+		Success func(childComplexity int) int
+	}
+
 	Grade struct {
 		GradeType func(childComplexity int) int
 		ID        func(childComplexity int) int
@@ -107,10 +112,10 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	AddStudent(ctx context.Context, input model.NewStudentInput) (*model.Student, error)
 	UpdateStudent(ctx context.Context, id string, input model.UpdateStudentInput) (*model.Student, error)
-	DeleteStudent(ctx context.Context, id string) (bool, error)
+	DeleteStudent(ctx context.Context, id string) (*model.BaseResponseView, error)
 	AddSubject(ctx context.Context, input model.NewSubjectInput) (*model.Subject, error)
 	UpdateSubject(ctx context.Context, id string, input model.UpdateSubjectInput) (*model.Subject, error)
-	DeleteSubject(ctx context.Context, id string) (bool, error)
+	DeleteSubject(ctx context.Context, id string) (*model.BaseResponseView, error)
 	AddGrade(ctx context.Context, input model.NewGradeInput) (*model.Grade, error)
 	UpdateGrade(ctx context.Context, id string, input model.UpdateGradeInput) (*model.Grade, error)
 	DeleteGrade(ctx context.Context, id string) (bool, error)
@@ -146,6 +151,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "BaseResponseView.message":
+		if e.complexity.BaseResponseView.Message == nil {
+			break
+		}
+
+		return e.complexity.BaseResponseView.Message(childComplexity), true
+
+	case "BaseResponseView.success":
+		if e.complexity.BaseResponseView.Success == nil {
+			break
+		}
+
+		return e.complexity.BaseResponseView.Success(childComplexity), true
 
 	case "Grade.gradeType":
 		if e.complexity.Grade.GradeType == nil {
@@ -1186,6 +1205,94 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _BaseResponseView_success(ctx context.Context, field graphql.CollectedField, obj *model.BaseResponseView) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BaseResponseView_success(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BaseResponseView_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BaseResponseView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BaseResponseView_message(ctx context.Context, field graphql.CollectedField, obj *model.BaseResponseView) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BaseResponseView_message(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BaseResponseView_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BaseResponseView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Grade_id(ctx context.Context, field graphql.CollectedField, obj *model.Grade) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Grade_id(ctx, field)
 	if err != nil {
@@ -1610,9 +1717,9 @@ func (ec *executionContext) _Mutation_deleteStudent(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*model.BaseResponseView)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBaseResponseView2ᚖgraphqlᚑhasuraᚑdemoᚋgraphᚋmodelᚐBaseResponseView(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_deleteStudent(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1622,7 +1729,13 @@ func (ec *executionContext) fieldContext_Mutation_deleteStudent(ctx context.Cont
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_BaseResponseView_success(ctx, field)
+			case "message":
+				return ec.fieldContext_BaseResponseView_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BaseResponseView", field.Name)
 		},
 	}
 	defer func() {
@@ -1791,9 +1904,9 @@ func (ec *executionContext) _Mutation_deleteSubject(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*model.BaseResponseView)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBaseResponseView2ᚖgraphqlᚑhasuraᚑdemoᚋgraphᚋmodelᚐBaseResponseView(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_deleteSubject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1803,7 +1916,13 @@ func (ec *executionContext) fieldContext_Mutation_deleteSubject(ctx context.Cont
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_BaseResponseView_success(ctx, field)
+			case "message":
+				return ec.fieldContext_BaseResponseView_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BaseResponseView", field.Name)
 		},
 	}
 	defer func() {
@@ -5555,13 +5674,20 @@ func (ec *executionContext) unmarshalInputUpdateStudentInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "dateOfBirth", "gender", "class"}
+	fieldsInOrder := [...]string{"studentId", "name", "dateOfBirth", "gender", "class"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "studentId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("studentId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StudentID = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -5603,13 +5729,20 @@ func (ec *executionContext) unmarshalInputUpdateSubjectInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name"}
+	fieldsInOrder := [...]string{"subjectId", "name"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "subjectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subjectId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SubjectID = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -5630,6 +5763,50 @@ func (ec *executionContext) unmarshalInputUpdateSubjectInput(ctx context.Context
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var baseResponseViewImplementors = []string{"BaseResponseView"}
+
+func (ec *executionContext) _BaseResponseView(ctx context.Context, sel ast.SelectionSet, obj *model.BaseResponseView) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, baseResponseViewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BaseResponseView")
+		case "success":
+			out.Values[i] = ec._BaseResponseView_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._BaseResponseView_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
 
 var gradeImplementors = []string{"Grade"}
 
@@ -6574,6 +6751,20 @@ func (ec *executionContext) unmarshalNAcademicPerformance2graphqlᚑhasuraᚑdem
 
 func (ec *executionContext) marshalNAcademicPerformance2graphqlᚑhasuraᚑdemoᚋgraphᚋmodelᚐAcademicPerformance(ctx context.Context, sel ast.SelectionSet, v model.AcademicPerformance) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNBaseResponseView2graphqlᚑhasuraᚑdemoᚋgraphᚋmodelᚐBaseResponseView(ctx context.Context, sel ast.SelectionSet, v model.BaseResponseView) graphql.Marshaler {
+	return ec._BaseResponseView(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBaseResponseView2ᚖgraphqlᚑhasuraᚑdemoᚋgraphᚋmodelᚐBaseResponseView(ctx context.Context, sel ast.SelectionSet, v *model.BaseResponseView) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BaseResponseView(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {

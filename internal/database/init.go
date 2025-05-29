@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"graphql-hasura-demo/internal/config"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -15,12 +16,12 @@ func InitDb() {
 }
 
 func Connect() {
-	// var appConfig = config.GetAppConfig()
-	// dsn := fmt.Sprintf(
-	// 	"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-	// 	appConfig.DB_HOST, appConfig.DB_USER, appConfig.DB_PASSWORD, appConfig.DB_NAME, appConfig.DB_PORT,
-	// )
-	dsn := "host=localhost user=postgres password=Khoa2401_ dbname=std_mng port=5432 sslmode=disable TimeZone=UTC"
+	var appConfig = config.GetAppConfig()
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+		appConfig.DB_HOST, appConfig.DB_USER, appConfig.DB_PASSWORD, appConfig.DB_NAME, appConfig.DB_PORT,
+	)
+	// dsn := "host=postgres user=postgres password=Khoa2401_ dbname=std_mng port=5432 sslmode=disable TimeZone=UTC"
 
 	d, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

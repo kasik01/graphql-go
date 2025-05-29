@@ -37,10 +37,11 @@ func GetStudentByID(id uint) (*Student, error) {
 	if err := db.First(&student, id).Error; err != nil {
 		return nil, err
 	}
+
 	return &student, nil
 }
 
-func (s *Student) UpdateStudent(id string) (*Student, error) {
+func (s *Student) UpdateStudent(id uint) (*Student, error) {
 	var student Student
 	if err := db.First(&student, id).Error; err != nil {
 		return nil, err
@@ -58,13 +59,8 @@ func (s *Student) UpdateStudent(id string) (*Student, error) {
 	return &student, nil
 }
 
-func (s *Student) DeleteStudent(id string) (bool, error) {
-	var student Student
-	if err := db.First(&student, id).Error; err != nil {
-		return false, err
-	}
-
-	result := db.Delete(&student)
+func (s *Student) DeleteStudent(id uint) (bool, error) {
+	result := db.Delete(&Student{}, id)
 	if result.Error != nil {
 		return false, result.Error
 	}

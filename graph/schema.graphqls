@@ -44,6 +44,7 @@ input NewStudentInput {
 }
 
 input UpdateStudentInput {
+  studentId: String
   name: String
   dateOfBirth: String
   gender: Gender
@@ -63,6 +64,7 @@ input NewSubjectInput {
 }
 
 input UpdateSubjectInput {
+  subjectId: String
   name: String
 }
 
@@ -92,6 +94,11 @@ type SubjectAverage {
   averageScore: Float!
 }
 
+type BaseResponseView {
+  success: Boolean!
+  message: String!
+}
+
 # Query
 type Query {
   # Student
@@ -118,12 +125,12 @@ type Mutation {
   # Student
   addStudent(input: NewStudentInput!): Student!
   updateStudent(id: ID!, input: UpdateStudentInput!): Student!
-  deleteStudent(id: ID!): Boolean!
+  deleteStudent(id: ID!): BaseResponseView!
 
   # Subject
   addSubject(input: NewSubjectInput!): Subject!
   updateSubject(id: ID!, input: UpdateSubjectInput!): Subject!
-  deleteSubject(id: ID!): Boolean!
+  deleteSubject(id: ID!): BaseResponseView!
 
   # Grade
   addGrade(input: NewGradeInput!): Grade!

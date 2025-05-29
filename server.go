@@ -2,10 +2,10 @@ package main
 
 import (
 	"graphql-hasura-demo/graph"
+	"graphql-hasura-demo/internal/config"
 	"graphql-hasura-demo/internal/database"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -15,17 +15,18 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-const defaultPort = "8080"
+// const defaultPort = "8080"
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-	}
+	config.LoadEnv()
+	defaultPort := config.GetAppConfig().APP_PORT
+	// port := os.Getenv("PORT")
+	// if port == "" {
+	// 	port = defaultPort
+	// }
 
 	database.InitDb()
 	// Load env variables
-	// config.LoadEnv()
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
 

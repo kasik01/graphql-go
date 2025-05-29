@@ -6,9 +6,11 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"graphql-hasura-demo/graph/model"
 	"graphql-hasura-demo/internal/database"
+	"graphql-hasura-demo/internal/utils"
 	"strconv"
 )
 
@@ -36,12 +38,59 @@ func (r *mutationResolver) AddStudent(ctx context.Context, input model.NewStuden
 
 // UpdateStudent is the resolver for the updateStudent field.
 func (r *mutationResolver) UpdateStudent(ctx context.Context, id string, input model.UpdateStudentInput) (*model.Student, error) {
-	panic(fmt.Errorf("not implemented: UpdateStudent - updateStudent"))
+	uintId64, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf(" invalide user id")
+	}
+
+	updateStudent := database.Student{
+		StudentID:   *input.StudentID,
+		Name:        *input.Name,
+		DateOfBirth: *input.DateOfBirth,
+		Gender:      string(*input.Gender),
+		Class:       *input.Class,
+	}
+
+	updatedStudent, err := updateStudent.UpdateStudent(uint(uintId64))
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Student{
+		ID:          id,
+		StudentID:   updatedStudent.StudentID,
+		Name:        updatedStudent.Name,
+		DateOfBirth: updateStudent.DateOfBirth,
+		Gender:      model.Gender(updatedStudent.Gender),
+		Class:       updateStudent.Class,
+	}, nil
 }
 
 // DeleteStudent is the resolver for the deleteStudent field.
-func (r *mutationResolver) DeleteStudent(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteStudent - deleteStudent"))
+func (r *mutationResolver) DeleteStudent(ctx context.Context, id string) (*model.BaseResponseView, error) {
+	uintId64, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf(" invalide user id")
+	}
+
+	var student database.Student
+	isSuccess, err := student.DeleteStudent(uint(uintId64))
+
+	if err != nil {
+		return &model.BaseResponseView{
+			Success: isSuccess,
+			Message: fmt.Sprintf("Deleted fail student with ID %s: %v", id, err),
+		}, nil
+	}
+	message := fmt.Sprintf("Student with ID: %s deleted successfully", id)
+	if !isSuccess {
+		message = fmt.Sprintf("No student found with ID: %s", id)
+	}
+
+	return &model.BaseResponseView{
+		Success: isSuccess,
+		Message: message,
+	}, nil
 }
 
 // AddSubject is the resolver for the addSubject field.
@@ -60,22 +109,103 @@ func (r *mutationResolver) AddSubject(ctx context.Context, input model.NewSubjec
 		SubjectID: createdSubject.SubjectID,
 		Name:      createdSubject.Name,
 	}, nil
-
 }
 
 // UpdateSubject is the resolver for the updateSubject field.
 func (r *mutationResolver) UpdateSubject(ctx context.Context, id string, input model.UpdateSubjectInput) (*model.Subject, error) {
-	panic(fmt.Errorf("not implemented: UpdateSubject - updateSubject"))
+	updateSubject := database.Subject{
+		SubjectID: *input.SubjectID,
+		Name:      *input.Name,
+	}
+
+	updatedSubject, err := updateSubject.UpdateSubject(id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Subject{
+		ID:        id,
+		SubjectID: updatedSubject.SubjectID,
+		Name:      updatedSubject.Name,
+	}, nil
 }
 
 // DeleteSubject is the resolver for the deleteSubject field.
-func (r *mutationResolver) DeleteSubject(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteSubject - deleteSubject"))
+func (r *mutationResolver) DeleteSubject(ctx context.Context, id string) (*model.BaseResponseView, error) {
+	var subject database.Subject
+	isSuccess, err := subject.DeleteSubject(id)
+
+	if err != nil {
+		return &model.BaseResponseView{
+			Success: isSuccess,
+			Message: fmt.Sprintf("Deleted fail subject with ID %s: %v", id, err),
+		}, nil
+	}
+	message := fmt.Sprintf("Subject with ID: %s deleted successfully", id)
+	if !isSuccess {
+		message = fmt.Sprintf("No subject found with ID: %s", id)
+	}
+
+	return &model.BaseResponseView{
+		Success: isSuccess,
+		Message: message,
+	}, nil
 }
 
 // AddGrade is the resolver for the addGrade field.
 func (r *mutationResolver) AddGrade(ctx context.Context, input model.NewGradeInput) (*model.Grade, error) {
-	panic(fmt.Errorf("not implemented: AddGrade - addGrade"))
+	if input.StudentID == "" || input.SubjectID == "" || input.Score < 0 || input.Score > 100 {
+		return nil, errors.New("input invalid")
+	}
+	studentID, err := strconv.ParseUint(input.StudentID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("studentID không hợp lệ: %v", err)
+	}
+	subjectID, err := strconv.ParseUint(input.SubjectID, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("subjectID không hợp lệ: %v", err)
+	}
+
+	if !input.GradeType.IsValid() {
+		return nil, errors.New("invalid grade")
+	}
+
+	newGrade := database.Grade{
+		StudentID: uint(studentID),
+		SubjectID: uint(subjectID),
+		GradeType: string(input.GradeType),
+		Score:     input.Score,
+	}
+
+	createdGrade, err := newGrade.CreateGrade()
+	if err != nil {
+		return nil, fmt.Errorf("create grade failed %v", err)
+	}
+
+	student, _ := database.GetStudentByID(createdGrade.StudentID)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("not found student: %v", err)
+	// }
+	subject, _ := database.GetSubjectByID(createdGrade.SubjectID)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("not found subject: %v", err)
+	// }
+	return &model.Grade{
+		ID: strconv.FormatUint(uint64(createdGrade.ID), 10),
+		Student: &model.Student{
+			ID:        strconv.FormatUint(uint64(studentID), 10),
+			StudentID: student.StudentID,
+			Name:      student.Name,
+		},
+		Subject: &model.Subject{
+			ID:        strconv.FormatUint(uint64(subjectID), 10),
+			SubjectID: subject.SubjectID,
+			Name:      subject.Name,
+		},
+		GradeType: model.GradeType(createdGrade.GradeType),
+		Score:     createdGrade.Score,
+	}, nil
 }
 
 // UpdateGrade is the resolver for the updateGrade field.
@@ -120,13 +250,65 @@ func (r *queryResolver) Student(ctx context.Context, id string) (*model.Student,
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch student: %w", err)
 	}
+	var grade database.Grade
+	grades, err := grade.GetGradesByStudent(student.ID)
+	if err != nil {
+		return nil, fmt.Errorf("lấy điểm thất bại: %w", err)
+	}
+
+	subjectAverages := make([]*model.SubjectAverage, 0)
+	subjectScores := make(map[uint][]float64)
+	for _, grade := range grades {
+		subjectScores[grade.SubjectID] = append(subjectScores[grade.SubjectID], grade.Score)
+	}
+	totalScore := 0.0
+	totalGrades := 0
+	for subjectID, scores := range subjectScores {
+		subject, err := database.GetSubjectByID(subjectID)
+		if err != nil {
+			return nil, fmt.Errorf("lấy môn học thất bại: %w", err)
+		}
+
+		avgScore := 0.0
+		if len(scores) > 0 {
+			sum := 0.0
+			for _, score := range scores {
+				sum += score
+			}
+			avgScore = sum / float64(len(scores))
+			totalScore += sum
+			totalGrades += len(scores)
+		}
+
+		subjectAverages = append(subjectAverages, &model.SubjectAverage{
+			Subject: &model.Subject{
+				ID:        strconv.FormatUint(uint64(subject.ID), 10),
+				SubjectID: subject.SubjectID,
+				Name:      subject.Name,
+			},
+			AverageScore: avgScore,
+		})
+	}
+
+	// tính điểm tb
+	overallAverage := 0.0
+	if totalGrades > 0 {
+		overallAverage = totalScore / float64(totalGrades)
+	}
+
+	// học lực
+	academicPerformance := utils.CalculateAcademicPerformance(overallAverage)
 	return &model.Student{
-		ID:          strconv.FormatUint(uint64(student.ID), 10),
-		StudentID:   student.StudentID,
-		Name:        student.Name,
-		DateOfBirth: student.DateOfBirth,
-		Gender:      model.Gender(student.Gender),
-		Class:       student.Class}, nil
+		ID:                  strconv.FormatUint(uint64(student.ID), 10),
+		StudentID:           student.StudentID,
+		Name:                student.Name,
+		DateOfBirth:         student.DateOfBirth,
+		Gender:              model.Gender(student.Gender),
+		Class:               student.Class,
+		SubjectAverages:     subjectAverages,
+		OverallAverage:      overallAverage,
+		AcademicPerformance: academicPerformance,
+	}, nil
 }
 
 // SearchStudents is the resolver for the searchStudents field.
@@ -167,12 +349,26 @@ func (r *queryResolver) Subjects(ctx context.Context) ([]*model.Subject, error) 
 	}
 
 	return result, nil
-
 }
 
 // Subject is the resolver for the subject field.
 func (r *queryResolver) Subject(ctx context.Context, id string) (*model.Subject, error) {
-	panic(fmt.Errorf("not implemented: Subject - subject"))
+	uid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	subject, err := database.GetSubjectByID(uint(uid))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Subject{
+		ID:        strconv.FormatUint(uint64(subject.ID), 10),
+		SubjectID: subject.SubjectID,
+		Name:      subject.Name,
+	}, nil
 }
 
 // Grades is the resolver for the grades field.
@@ -182,7 +378,37 @@ func (r *queryResolver) Grades(ctx context.Context) ([]*model.Grade, error) {
 
 // GradesByStudent is the resolver for the gradesByStudent field.
 func (r *queryResolver) GradesByStudent(ctx context.Context, studentID string) ([]*model.Grade, error) {
-	panic(fmt.Errorf("not implemented: GradesByStudent - gradesByStudent"))
+	parsedUint64, err := strconv.ParseUint(studentID, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("ID học sinh không hợp lệ: %v", err)
+	}
+	uintID := uint(parsedUint64)
+
+	// Gọi hàm ReportCard để lấy điểm
+	var g database.Grade
+	grades, err := g.GetGradesByStudent(uintID)
+	if err != nil {
+		return nil, fmt.Errorf("lấy danh sách điểm thất bại: %v", err)
+	}
+
+	var result []*model.Grade
+	for _, grade := range grades {
+		result = append(result, &model.Grade{
+			ID: strconv.FormatUint(uint64(grade.ID), 10),
+			Student: &model.Student{
+				ID:   strconv.FormatUint(uint64(grade.Student.ID), 10),
+				Name: grade.Student.Name,
+			},
+			Subject: &model.Subject{
+				ID:   strconv.FormatUint(uint64(grade.Subject.ID), 10),
+				Name: grade.Subject.Name,
+			},
+			GradeType: model.GradeType(grade.GradeType),
+			Score:     grade.Score,
+		})
+	}
+
+	return result, nil
 }
 
 // ReportCard is the resolver for the reportCard field.
@@ -197,7 +423,11 @@ func (r *queryResolver) StudentsByClass(ctx context.Context, class string) ([]*m
 
 // StudentsByPerformance is the resolver for the studentsByPerformance field.
 func (r *queryResolver) StudentsByPerformance(ctx context.Context, performance model.AcademicPerformance) ([]*model.Student, error) {
-	panic(fmt.Errorf("not implemented: StudentsByPerformance - studentsByPerformance"))
+	_, err := database.GetAllStudents()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch students: %w", err)
+	}
+	panic(fmt.Errorf("not implemented: StudentsByClass - studentsByClass"))
 }
 
 // Mutation returns MutationResolver implementation.
@@ -208,15 +438,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *queryResolver) StudentSearch(ctx context.Context, keyword string) ([]*model.Student, error) {
-	panic(fmt.Errorf("not implemented: StudentSearch - studentSearch"))
-}
-*/

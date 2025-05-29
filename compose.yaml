@@ -6,7 +6,7 @@ services:
     restart: always
     env_file: .env
     ports:
-      - "$DB_PORT:$DB_PORT"
+      - "${DB_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,16 +15,43 @@ services:
       timeout: 3s
       retries: 3
 
+  # graphql-engine:
+  #   image: hasura/graphql-engine:v2.40.2
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./controller/migrations:/hasura-migrations
+  #     - ./controller/metadata:/hasura-metadata
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   restart: always
+  #   env_file: .env
+  #   environment:
+  #     HASURA_GRAPHQL_DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+  #     HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+  #     HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET}
+  #     HASURA_GRAPHQL_JWT_SECRET: '{"type":"HS256","key":"your-very-long-jwt-secret-key-1234567890abcd"}'
+  #   healthcheck:
+  #     test: [ "CMD", "curl", "-f", "http://localhost:8080/healthz" ]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT}:8080"
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "$APP_PORT:$APP_PORT"
+    restart: always
     env_file: .env
     # volumes:
     #   - .:/app
+    command: go run server.go
 
 volumes:
   pgdata:

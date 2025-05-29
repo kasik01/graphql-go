@@ -9,6 +9,11 @@ import (
 	"strconv"
 )
 
+type BaseResponseView struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
 type Grade struct {
 	ID        string    `json:"id"`
 	Student   *Student  `json:"student"`
@@ -71,6 +76,7 @@ type UpdateGradeInput struct {
 }
 
 type UpdateStudentInput struct {
+	StudentID   *string `json:"studentId,omitempty"`
 	Name        *string `json:"name,omitempty"`
 	DateOfBirth *string `json:"dateOfBirth,omitempty"`
 	Gender      *Gender `json:"gender,omitempty"`
@@ -78,7 +84,8 @@ type UpdateStudentInput struct {
 }
 
 type UpdateSubjectInput struct {
-	Name *string `json:"name,omitempty"`
+	SubjectID *string `json:"subjectId,omitempty"`
+	Name      *string `json:"name,omitempty"`
 }
 
 type AcademicPerformance string
