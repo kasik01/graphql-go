@@ -63,6 +63,48 @@ Demo project sử dụng Go (gqlgen), PostgreSQL và Hasura GraphQL Engine.
 
 Bạn có thể dùng Hasura Console để thêm bảng, dữ liệu, hoặc dùng mutation của Go app.
 
+---
+
+## Test chức năng Export Excel
+
+### 1. Gửi query export
+
+Sử dụng Hasura Console, Postman, Insomnia, hoặc Playground truy cập endpoint GraphQL (ví dụ: `http://localhost:8081/graph`) và gửi query sau:
+
+```graphql
+query {
+  ExportStudentsByClass(class: "10A1") {
+    success
+    message
+    data
+  }
+}
+```
+- Thay `"10A1"` bằng tên lớp bạn muốn xuất.
+
+### 2. Nhận kết quả
+
+- Nếu thành công, trường `data` sẽ trả về một URL download file Excel, ví dụ:
+  ```
+  {
+    "success": true,
+    "message": "Xuất Excel thành công cho lớp 10A1",
+    "data": "http://localhost:8081/download/students_10A1_1717040000000.xlsx"
+  }
+  ```
+
+### 3. Tải file Excel
+
+- Truy cập URL trong trường `data` trên trình duyệt để tải file Excel về máy.
+
+### 4. Lưu ý
+
+- Đảm bảo thư mục `/tmp` trên server có quyền ghi file.
+- Đảm bảo đã cấu hình route `/download/{filename}` trong app Go để phục vụ file tĩnh từ `/tmp`.
+- Nếu muốn trả về file dạng base64 thay vì URL, hãy mở comment phần code sử dụng `WriteToBuffer` và trả về `base64Data`.
+
+---
+
 ## Ghi chú
 
 - Nếu gặp lỗi port, hãy đổi giá trị `APP_PORT` hoặc cổng Hasura trong compose.yaml.

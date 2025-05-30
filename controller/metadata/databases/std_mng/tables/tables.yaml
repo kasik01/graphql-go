@@ -1,0 +1,3 @@
+- "!include public_grades.yaml"
+- "!include public_students.yaml"
+- "!include public_subjects.yaml"

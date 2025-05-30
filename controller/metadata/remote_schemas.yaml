@@ -1,0 +1,7 @@
+- name: gqlgen_api
+  definition:
+    url: http://host.docker.internal:8084/query
+    timeout_seconds: 60
+    customization:
+      root_fields_namespace: gqlgen_api
+  comment: ""

@@ -10,8 +10,9 @@ import (
 )
 
 type BaseResponseView struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success bool    `json:"success"`
+	Message string  `json:"message"`
+	Data    *string `json:"data,omitempty"`
 }
 
 type Grade struct {

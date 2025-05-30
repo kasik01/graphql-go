@@ -1,0 +1,11 @@
+table:
+  name: subjects
+  schema: public
+array_relationships:
+  - name: grades
+    using:
+      foreign_key_constraint_on:
+        column: subject_id
+        table:
+          name: grades
+          schema: public

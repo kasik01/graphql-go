@@ -97,6 +97,7 @@ type SubjectAverage {
 type BaseResponseView {
   success: Boolean!
   message: String!
+  data: String 
 }
 
 # Query
@@ -113,11 +114,12 @@ type Query {
   # Grade
   grades: [Grade!]!
   gradesByStudent(studentId: String!): [Grade!]!
-  reportCard(studentId: String!): [Grade!]!
 
   # Reports
-  studentsByClass(class: String!): [Student!]!
   studentsByPerformance(performance: AcademicPerformance!): [Student!]!
+
+  # Exports
+  ExportStudentsByClass(class: String!): BaseResponseView!
 }
 
 # Mutation

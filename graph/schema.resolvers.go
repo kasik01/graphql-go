@@ -6,12 +6,14 @@ package graph
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"graphql-hasura-demo/graph/model"
 	"graphql-hasura-demo/internal/database"
-	"graphql-hasura-demo/internal/utils"
 	"strconv"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // AddStudent is the resolver for the addStudent field.
@@ -80,6 +82,7 @@ func (r *mutationResolver) DeleteStudent(ctx context.Context, id string) (*model
 		return &model.BaseResponseView{
 			Success: isSuccess,
 			Message: fmt.Sprintf("Deleted fail student with ID %s: %v", id, err),
+			Data:    nil,
 		}, nil
 	}
 	message := fmt.Sprintf("Student with ID: %s deleted successfully", id)
@@ -90,6 +93,7 @@ func (r *mutationResolver) DeleteStudent(ctx context.Context, id string) (*model
 	return &model.BaseResponseView{
 		Success: isSuccess,
 		Message: message,
+		Data:    nil,
 	}, nil
 }
 
@@ -250,65 +254,7 @@ func (r *queryResolver) Student(ctx context.Context, id string) (*model.Student,
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch student: %w", err)
 	}
-	var grade database.Grade
-	grades, err := grade.GetGradesByStudent(student.ID)
-	if err != nil {
-		return nil, fmt.Errorf("lấy điểm thất bại: %w", err)
-	}
-
-	subjectAverages := make([]*model.SubjectAverage, 0)
-	subjectScores := make(map[uint][]float64)
-	for _, grade := range grades {
-		subjectScores[grade.SubjectID] = append(subjectScores[grade.SubjectID], grade.Score)
-	}
-	totalScore := 0.0
-	totalGrades := 0
-	for subjectID, scores := range subjectScores {
-		subject, err := database.GetSubjectByID(subjectID)
-		if err != nil {
-			return nil, fmt.Errorf("lấy môn học thất bại: %w", err)
-		}
-
-		avgScore := 0.0
-		if len(scores) > 0 {
-			sum := 0.0
-			for _, score := range scores {
-				sum += score
-			}
-			avgScore = sum / float64(len(scores))
-			totalScore += sum
-			totalGrades += len(scores)
-		}
-
-		subjectAverages = append(subjectAverages, &model.SubjectAverage{
-			Subject: &model.Subject{
-				ID:        strconv.FormatUint(uint64(subject.ID), 10),
-				SubjectID: subject.SubjectID,
-				Name:      subject.Name,
-			},
-			AverageScore: avgScore,
-		})
-	}
-
-	// tính điểm tb
-	overallAverage := 0.0
-	if totalGrades > 0 {
-		overallAverage = totalScore / float64(totalGrades)
-	}
-
-	// học lực
-	academicPerformance := utils.CalculateAcademicPerformance(overallAverage)
-	return &model.Student{
-		ID:                  strconv.FormatUint(uint64(student.ID), 10),
-		StudentID:           student.StudentID,
-		Name:                student.Name,
-		DateOfBirth:         student.DateOfBirth,
-		Gender:              model.Gender(student.Gender),
-		Class:               student.Class,
-		SubjectAverages:     subjectAverages,
-		OverallAverage:      overallAverage,
-		AcademicPerformance: academicPerformance,
-	}, nil
+	return database.BuildStudentModel(*student)
 }
 
 // SearchStudents is the resolver for the searchStudents field.
@@ -411,23 +357,198 @@ func (r *queryResolver) GradesByStudent(ctx context.Context, studentID string) (
 	return result, nil
 }
 
-// ReportCard is the resolver for the reportCard field.
-func (r *queryResolver) ReportCard(ctx context.Context, studentID string) ([]*model.Grade, error) {
-	panic(fmt.Errorf("not implemented: ReportCard - reportCard"))
-}
-
-// StudentsByClass is the resolver for the studentsByClass field.
-func (r *queryResolver) StudentsByClass(ctx context.Context, class string) ([]*model.Student, error) {
-	panic(fmt.Errorf("not implemented: StudentsByClass - studentsByClass"))
-}
-
 // StudentsByPerformance is the resolver for the studentsByPerformance field.
 func (r *queryResolver) StudentsByPerformance(ctx context.Context, performance model.AcademicPerformance) ([]*model.Student, error) {
-	_, err := database.GetAllStudents()
+	students, err := database.GetAllStudents()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch students: %w", err)
 	}
-	panic(fmt.Errorf("not implemented: StudentsByClass - studentsByClass"))
+
+	if len(students) == 0 {
+		return []*model.Student{}, nil
+	}
+
+	result := make([]*model.Student, 0)
+	for _, student := range students {
+		modelStudent, err := database.BuildStudentModel(student)
+		if err != nil {
+			return nil, fmt.Errorf("failed get students: %w", err)
+		}
+		if modelStudent.AcademicPerformance == performance {
+			result = append(result, modelStudent)
+		}
+	}
+	return result, nil
+}
+
+// ExportStudentsByClass is the resolver for the ExportStudentsByClass field.
+func (r *queryResolver) ExportStudentsByClass(ctx context.Context, class string) (*model.BaseResponseView, error) {
+	// Lấy học sinh theo lớp
+	db := database.GetDB()
+	if db == nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: "database instance không được khởi tạo",
+		}, nil
+	}
+
+	var students []database.Student
+	if err := db.Where("class = ?", class).Find(&students).Error; err != nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: fmt.Sprintf("lấy học sinh theo lớp %s thất bại: %v", class, err),
+		}, nil
+	}
+
+	if len(students) == 0 {
+		return &model.BaseResponseView{
+			Success: true,
+			Message: fmt.Sprintf("không có học sinh trong lớp %s", class),
+		}, nil
+	}
+
+	// Lấy danh sách môn học
+	var subjects []database.Subject
+	if err := db.Find(&subjects).Error; err != nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: fmt.Sprintf("lấy danh sách môn học thất bại: %v", err),
+		}, nil
+	}
+
+	// Tạo file Excel
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	sheet := "Sheet1"
+
+	// Thiết lập tiêu đề
+	headers := []string{"Mã học sinh", "Tên", "Ngày sinh", "Giới tính", "Lớp", "Điểm trung bình", "Học lực"}
+	for i, header := range headers {
+		col := string(rune('A'+i)) + "1"
+		if err := f.SetCellValue(sheet, col, header); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("thiết lập tiêu đề thất bại: %v", err),
+			}, nil
+		}
+	}
+
+	// Thêm tiêu đề môn học
+	for i, subject := range subjects {
+		col := string(rune('H'+i)) + "1"
+		if err := f.SetCellValue(sheet, col, subject.Name); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("thiết lập tiêu đề môn %s thất bại: %v", subject.Name, err),
+			}, nil
+		}
+	}
+
+	// Điền dữ liệu học sinh
+	modelStudents := make([]*model.Student, 0, len(students))
+	for _, student := range students {
+		modelStudent, err := database.BuildStudentModel(student)
+		if err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("xử lý học sinh %d thất bại: %v", student.ID, err),
+			}, nil
+		}
+		modelStudents = append(modelStudents, modelStudent)
+	}
+
+	for i, student := range modelStudents {
+		row := i + 2
+		if err := f.SetCellValue(sheet, fmt.Sprintf("A%d", row), student.StudentID); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("B%d", row), student.Name); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("C%d", row), student.DateOfBirth); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("D%d", row), student.Gender); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("E%d", row), student.Class); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("F%d", row), student.OverallAverage); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("G%d", row), student.AcademicPerformance); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+
+		// Ghi điểm trung bình môn
+		for j, avg := range student.SubjectAverages {
+			col := string(rune('H' + j))
+			if err := f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, row), avg.AverageScore); err != nil {
+				return &model.BaseResponseView{
+					Success: false,
+					Message: fmt.Sprintf("ghi điểm môn cho học sinh %s thất bại: %v", student.StudentID, err),
+				}, nil
+			}
+		}
+	}
+
+	// Lưu file Excel vào buffer
+	buffer, err := f.WriteToBuffer()
+	if err != nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: fmt.Sprintf("tạo file Excel thất bại: %v", err),
+		}, nil
+	}
+
+	// Chuyển sang base64
+	base64Data := base64.StdEncoding.EncodeToString(buffer.Bytes())
+
+	// filename := fmt.Sprintf("students_%s_%d.xlsx", class, time.Now().UnixNano())
+	// filePath := filepath.Join("/tmp", filename)
+
+	// // Lưu file Excel
+	// if err := f.SaveAs(filePath); err != nil {
+	// 	return &model.BaseResponseView{
+	// 		Success: false,
+	// 		Message: fmt.Sprintf("lưu file Excel thất bại: %v", err),
+	// 	}, nil
+	// }
+
+	// // Tạo URL download
+	// downloadURL := fmt.Sprintf("http://localhost:8084/download/%s", filename)
+
+	return &model.BaseResponseView{
+		Success: true,
+		Message: fmt.Sprintf("Xuất Excel thành công cho lớp %s", class),
+		Data:    &base64Data,
+	}, nil
 }
 
 // Mutation returns MutationResolver implementation.
@@ -438,3 +559,166 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *mutationResolver) ExportStudentsByClass(ctx context.Context, class string) (*model.BaseResponseView, error) {
+	// Lấy học sinh theo lớp
+	db := database.GetDB()
+	if db == nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: "database instance không được khởi tạo",
+		}, nil
+	}
+
+	var students []database.Student
+	if err := db.Where("class = ?", class).Find(&students).Error; err != nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: fmt.Sprintf("lấy học sinh theo lớp %s thất bại: %v", class, err),
+		}, nil
+	}
+
+	if len(students) == 0 {
+		return &model.BaseResponseView{
+			Success: true,
+			Message: fmt.Sprintf("không có học sinh trong lớp %s", class),
+		}, nil
+	}
+
+	// Lấy danh sách môn học
+	var subjects []database.Subject
+	if err := db.Find(&subjects).Error; err != nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: fmt.Sprintf("lấy danh sách môn học thất bại: %v", err),
+		}, nil
+	}
+
+	// Tạo file Excel
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	sheet := "Sheet1"
+
+	// Thiết lập tiêu đề
+	headers := []string{"Mã học sinh", "Tên", "Ngày sinh", "Giới tính", "Lớp", "Điểm trung bình", "Học lực"}
+	for i, header := range headers {
+		col := string(rune('A'+i)) + "1"
+		if err := f.SetCellValue(sheet, col, header); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("thiết lập tiêu đề thất bại: %v", err),
+			}, nil
+		}
+	}
+
+	// Thêm tiêu đề môn học
+	for i, subject := range subjects {
+		col := string(rune('H'+i)) + "1"
+		if err := f.SetCellValue(sheet, col, subject.Name); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("thiết lập tiêu đề môn %s thất bại: %v", subject.Name, err),
+			}, nil
+		}
+	}
+
+	// Điền dữ liệu học sinh
+	modelStudents := make([]*model.Student, 0, len(students))
+	for _, student := range students {
+		modelStudent, err := database.BuildStudentModel(student)
+		if err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("xử lý học sinh %d thất bại: %v", student.ID, err),
+			}, nil
+		}
+		modelStudents = append(modelStudents, modelStudent)
+	}
+
+	for i, student := range modelStudents {
+		row := i + 2
+		if err := f.SetCellValue(sheet, fmt.Sprintf("A%d", row), student.StudentID); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("B%d", row), student.Name); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("C%d", row), student.DateOfBirth); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("D%d", row), student.Gender); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("E%d", row), student.Class); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("F%d", row), student.OverallAverage); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("G%d", row), student.AcademicPerformance); err != nil {
+			return &model.BaseResponseView{
+				Success: false,
+				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
+			}, nil
+		}
+
+		// Ghi điểm trung bình môn
+		for j, avg := range student.SubjectAverages {
+			col := string(rune('H' + j))
+			if err := f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, row), avg.AverageScore); err != nil {
+				return &model.BaseResponseView{
+					Success: false,
+					Message: fmt.Sprintf("ghi điểm môn cho học sinh %s thất bại: %v", student.StudentID, err),
+				}, nil
+			}
+		}
+	}
+
+	// Lưu file Excel vào buffer
+	buffer, err := f.WriteToBuffer()
+	if err != nil {
+		return &model.BaseResponseView{
+			Success: false,
+			Message: fmt.Sprintf("tạo file Excel thất bại: %v", err),
+		}, nil
+	}
+
+	// Chuyển sang base64
+	base64Data := base64.StdEncoding.EncodeToString(buffer.Bytes())
+
+	return &model.BaseResponseView{
+		Success: true,
+		Message: fmt.Sprintf("Xuất Excel thành công cho lớp %s", class),
+		Data:    &base64Data,
+	}, nil
+}
+*/
