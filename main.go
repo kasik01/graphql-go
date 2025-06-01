@@ -1,14 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"graphql-hasura-demo/graph"
 	"graphql-hasura-demo/internal/config"
 	"graphql-hasura-demo/internal/database"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -54,28 +51,28 @@ func main() {
 	http.Handle("/query", c.Handler(srv))
 
 	// Route cho download file
-	http.HandleFunc("/download/", func(w http.ResponseWriter, r *http.Request) {
-		filename := filepath.Base(r.URL.Path)
-		filePath := filepath.Join("/tmp", filename)
+	// http.HandleFunc("/download/", func(w http.ResponseWriter, r *http.Request) {
+	// 	filename := filepath.Base(r.URL.Path)
+	// 	filePath := filepath.Join("/tmp", filename)
 
-		// Kiểm tra file tồn tại
-		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			http.Error(w, "File không tồn tại", http.StatusNotFound)
-			return
-		}
+	// 	// Kiểm tra file tồn tại
+	// 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+	// 		http.Error(w, "File không tồn tại", http.StatusNotFound)
+	// 		return
+	// 	}
 
-		// Thiết lập header để download
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
-		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	// 	// Thiết lập header để download
+	// 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	// 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-		// Phục vụ file
-		http.ServeFile(w, r, filePath)
+	// 	// Phục vụ file
+	// 	http.ServeFile(w, r, filePath)
 
-		// Xóa file sau khi phục vụ (tùy chọn)
-		if err := os.Remove(filePath); err != nil {
-			log.Printf("Xóa file %s thất bại: %v", filePath, err)
-		}
-	})
+	// 	// Xóa file sau khi phục vụ (tùy chọn)
+	// 	if err := os.Remove(filePath); err != nil {
+	// 		log.Printf("Xóa file %s thất bại: %v", filePath, err)
+	// 	}
+	// })
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", defaultPort)
 	log.Fatal(http.ListenAndServe(":"+defaultPort, nil))

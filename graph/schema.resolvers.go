@@ -13,7 +13,7 @@ import (
 	"graphql-hasura-demo/internal/database"
 	"strconv"
 
-	"github.com/xuri/excelize/v2"
+	excelize "github.com/xuri/excelize/v2"
 )
 
 // AddStudent is the resolver for the addStudent field.
@@ -407,7 +407,6 @@ func (r *queryResolver) ExportStudentsByClass(ctx context.Context, class string)
 		}, nil
 	}
 
-	// Lấy danh sách môn học
 	var subjects []database.Subject
 	if err := db.Find(&subjects).Error; err != nil {
 		return &model.BaseResponseView{
@@ -416,7 +415,6 @@ func (r *queryResolver) ExportStudentsByClass(ctx context.Context, class string)
 		}, nil
 	}
 
-	// Tạo file Excel
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -546,7 +544,7 @@ func (r *queryResolver) ExportStudentsByClass(ctx context.Context, class string)
 
 	return &model.BaseResponseView{
 		Success: true,
-		Message: fmt.Sprintf("Xuất Excel thành công cho lớp %s", class),
+		Message: fmt.Sprintf("1234Xuất Excel thành công cho lớp %s", class),
 		Data:    &base64Data,
 	}, nil
 }
@@ -559,166 +557,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *mutationResolver) ExportStudentsByClass(ctx context.Context, class string) (*model.BaseResponseView, error) {
-	// Lấy học sinh theo lớp
-	db := database.GetDB()
-	if db == nil {
-		return &model.BaseResponseView{
-			Success: false,
-			Message: "database instance không được khởi tạo",
-		}, nil
-	}
-
-	var students []database.Student
-	if err := db.Where("class = ?", class).Find(&students).Error; err != nil {
-		return &model.BaseResponseView{
-			Success: false,
-			Message: fmt.Sprintf("lấy học sinh theo lớp %s thất bại: %v", class, err),
-		}, nil
-	}
-
-	if len(students) == 0 {
-		return &model.BaseResponseView{
-			Success: true,
-			Message: fmt.Sprintf("không có học sinh trong lớp %s", class),
-		}, nil
-	}
-
-	// Lấy danh sách môn học
-	var subjects []database.Subject
-	if err := db.Find(&subjects).Error; err != nil {
-		return &model.BaseResponseView{
-			Success: false,
-			Message: fmt.Sprintf("lấy danh sách môn học thất bại: %v", err),
-		}, nil
-	}
-
-	// Tạo file Excel
-	f := excelize.NewFile()
-	defer func() {
-		if err := f.Close(); err != nil {
-			fmt.Println(err)
-		}
-	}()
-	sheet := "Sheet1"
-
-	// Thiết lập tiêu đề
-	headers := []string{"Mã học sinh", "Tên", "Ngày sinh", "Giới tính", "Lớp", "Điểm trung bình", "Học lực"}
-	for i, header := range headers {
-		col := string(rune('A'+i)) + "1"
-		if err := f.SetCellValue(sheet, col, header); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("thiết lập tiêu đề thất bại: %v", err),
-			}, nil
-		}
-	}
-
-	// Thêm tiêu đề môn học
-	for i, subject := range subjects {
-		col := string(rune('H'+i)) + "1"
-		if err := f.SetCellValue(sheet, col, subject.Name); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("thiết lập tiêu đề môn %s thất bại: %v", subject.Name, err),
-			}, nil
-		}
-	}
-
-	// Điền dữ liệu học sinh
-	modelStudents := make([]*model.Student, 0, len(students))
-	for _, student := range students {
-		modelStudent, err := database.BuildStudentModel(student)
-		if err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("xử lý học sinh %d thất bại: %v", student.ID, err),
-			}, nil
-		}
-		modelStudents = append(modelStudents, modelStudent)
-	}
-
-	for i, student := range modelStudents {
-		row := i + 2
-		if err := f.SetCellValue(sheet, fmt.Sprintf("A%d", row), student.StudentID); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
-			}, nil
-		}
-		if err := f.SetCellValue(sheet, fmt.Sprintf("B%d", row), student.Name); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
-			}, nil
-		}
-		if err := f.SetCellValue(sheet, fmt.Sprintf("C%d", row), student.DateOfBirth); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
-			}, nil
-		}
-		if err := f.SetCellValue(sheet, fmt.Sprintf("D%d", row), student.Gender); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
-			}, nil
-		}
-		if err := f.SetCellValue(sheet, fmt.Sprintf("E%d", row), student.Class); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
-			}, nil
-		}
-		if err := f.SetCellValue(sheet, fmt.Sprintf("F%d", row), student.OverallAverage); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
-			}, nil
-		}
-		if err := f.SetCellValue(sheet, fmt.Sprintf("G%d", row), student.AcademicPerformance); err != nil {
-			return &model.BaseResponseView{
-				Success: false,
-				Message: fmt.Sprintf("ghi dữ liệu học sinh %s thất bại: %v", student.StudentID, err),
-			}, nil
-		}
-
-		// Ghi điểm trung bình môn
-		for j, avg := range student.SubjectAverages {
-			col := string(rune('H' + j))
-			if err := f.SetCellValue(sheet, fmt.Sprintf("%s%d", col, row), avg.AverageScore); err != nil {
-				return &model.BaseResponseView{
-					Success: false,
-					Message: fmt.Sprintf("ghi điểm môn cho học sinh %s thất bại: %v", student.StudentID, err),
-				}, nil
-			}
-		}
-	}
-
-	// Lưu file Excel vào buffer
-	buffer, err := f.WriteToBuffer()
-	if err != nil {
-		return &model.BaseResponseView{
-			Success: false,
-			Message: fmt.Sprintf("tạo file Excel thất bại: %v", err),
-		}, nil
-	}
-
-	// Chuyển sang base64
-	base64Data := base64.StdEncoding.EncodeToString(buffer.Bytes())
-
-	return &model.BaseResponseView{
-		Success: true,
-		Message: fmt.Sprintf("Xuất Excel thành công cho lớp %s", class),
-		Data:    &base64Data,
-	}, nil
-}
-*/
