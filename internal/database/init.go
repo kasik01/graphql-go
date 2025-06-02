@@ -4,9 +4,25 @@ import (
 	"fmt"
 	"graphql-hasura-demo/internal/config"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+type Config struct {
+	Db  *gorm.DB
+	Gin *gin.Engine
+}
+
+func GetConfig() *Config {
+	Connect()
+	InitModels()
+
+	return &Config{
+		Db:  GetDB(),
+		Gin: gin.Default(),
+	}
+}
 
 var db *gorm.DB
 

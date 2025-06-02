@@ -30,24 +30,27 @@ services:
     environment:
       HASURA_GRAPHQL_DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET}
       HASURA_GRAPHQL_JWT_SECRET: '{"type":"HS256","key":"your-very-long-jwt-secret-key-1234567890abcd"}'
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/healthz" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      GO_BACKEND_URL: http://app-backend:${APP_PORT}
+    # healthcheck:
+    #   test: [ "CMD", "curl", "-f", "http://localhost:8080/healthz" ]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 3
 
-  app:
+  app-backend:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "${APP_PORT}:${APP_PORT}"
     depends_on:
-      postgres:
-        condition: service_healthy
-    restart: always
+      - postgres
+      # postgres:
+      #   condition: service_healthy
+      # restart: always
     env_file: .env
     # volumes:
     #   - .:/app

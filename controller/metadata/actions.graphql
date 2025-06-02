@@ -1,9 +1,38 @@
-input SampleInput {
+type Mutation {
+  login(
+    params: LoginRequest!
+  ): LoginResponse
+}
+
+type Mutation {
+  register(
+    params: RegisterRequest!
+  ): RegisterResponse
+}
+
+input RegisterRequest {
   username: String!
   password: String!
 }
 
-type SampleOutput {
+input LoginRequest {
+  username: String!
+  password: String!
+}
+
+type RegisterResponse {
+  data: RegisterResponseData!
+}
+
+type RegisterResponseData {
+  username: String!
+}
+
+type LoginResponse {
+  data: LoginResponseData!
+}
+
+type LoginResponseData {
   accessToken: String!
 }
 

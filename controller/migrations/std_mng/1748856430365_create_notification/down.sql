@@ -1,0 +1,7 @@
+-- Could not auto-generate a down migration.
+-- Please write an appropriate down migration for the SQL below:
+-- CREATE TABLE notification (
+--     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--     message text,
+--     user_id uuid REFERENCES "users"(id)
+-- );

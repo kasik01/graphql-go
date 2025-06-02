@@ -1,17 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"graphql-hasura-demo/graph"
+	"graphql-hasura-demo/internal/auth"
+	"graphql-hasura-demo/internal/base"
 	"graphql-hasura-demo/internal/config"
-	"graphql-hasura-demo/internal/database"
-	"log"
-	"net/http"
+	"graphql-hasura-demo/internal/user"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/gin-gonic/gin"
 	"github.com/go-chi/cors"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -25,9 +27,17 @@ func main() {
 	// if port == "" {
 	// 	port = defaultPort
 	// }
-
-	database.InitDb()
+	// cfg := database.GetConfig()
+	// routes.RegisterRoutes(cfg)
+	// database.InitDb()
 	// Load env variables
+	ginRouter := gin.Default()
+	ginRouter.Use(base.ErrorHandler)
+
+	user.NewRouter(ginRouter).Init()
+	auth.NewRouter(ginRouter).Init()
+	// ginRouter.Run(":3000")
+	// fmt.Println("Server/REST running on port: 3000")
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
 
@@ -47,8 +57,9 @@ func main() {
 		AllowCredentials: true,
 	})
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", c.Handler(srv))
+	// graphql
+	// http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	// http.Handle("/query", c.Handler(srv))
 
 	// Route cho download file
 	// http.HandleFunc("/download/", func(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +85,18 @@ func main() {
 	// 	}
 	// })
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", defaultPort)
-	log.Fatal(http.ListenAndServe(":"+defaultPort, nil))
+	// log.Printf("connect to http://localhost:%s/ for GraphQL playground", defaultPort)
+	// log.Fatal(http.ListenAndServe(":"+defaultPort, nil))
+
+	// Mount GraphQL routes on Gin
+	ginRouter.GET("/playground", func(ctx *gin.Context) {
+		playground.Handler("GraphQL playground", "/query").ServeHTTP(ctx.Writer, ctx.Request)
+	})
+	ginRouter.POST("/query", func(ctx *gin.Context) {
+		c.Handler(srv).ServeHTTP(ctx.Writer, ctx.Request)
+	})
+
+	fmt.Printf("🚀 Server running on port: %s\n", defaultPort)
+	fmt.Printf("GraphQL playground available at: http://localhost:%s/playground\n", defaultPort)
+	ginRouter.Run(":" + defaultPort)
 }

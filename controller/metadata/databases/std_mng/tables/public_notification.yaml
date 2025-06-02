@@ -1,0 +1,14 @@
+table:
+  name: notification
+  schema: public
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - id
+        - message
+      filter:
+        user_id:
+          _eq: x-hasura-user-id
+      allow_aggregations: true
+    comment: ""

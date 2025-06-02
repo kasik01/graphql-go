@@ -1,3 +1,5 @@
 - "!include public_grades.yaml"
+- "!include public_notification.yaml"
 - "!include public_students.yaml"
 - "!include public_subjects.yaml"
+- "!include public_users.yaml"
