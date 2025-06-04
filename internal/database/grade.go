@@ -1,6 +1,8 @@
 package database
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Grade struct {
 	ID        uint    `gorm:"primaryKey" json:"id"`
@@ -24,23 +26,27 @@ func (g *Grade) CreateGrade() (*Grade, error) {
 	return g, result.Error
 }
 
-func (g *Grade) UpdateGrade(id uint) (*Grade, error) {
-	var updateGrade Grade
-	if err := db.First(&updateGrade, id).Error; err != nil {
+func GetListGrade() ([]Grade, error) {
+	var grades []Grade
+	if err := db.Find(&grades).Error; err != nil {
 		return nil, err
 	}
+	return grades, nil
+}
 
-	updateGrade.StudentID = g.StudentID
-	updateGrade.SubjectID = g.SubjectID
-	updateGrade.GradeType = g.GradeType
+func (g *Grade) UpdateGrade(id uint) (bool, error) {
+	var updateGrade Grade
+	if err := db.First(&updateGrade, id).Error; err != nil {
+		return false, err
+	}
 	updateGrade.Score = g.Score
 
 	result := db.Save(&updateGrade)
 	if result != nil {
-		return nil, result.Error
+		return false, result.Error
 	}
 
-	return &updateGrade, nil
+	return true, nil
 }
 
 func (g *Grade) DeleteGrade(id uint) (bool, error) {
@@ -66,4 +72,13 @@ func (g *Grade) GetGradesByStudent(studentID uint) ([]Grade, error) {
 	}
 
 	return grades, nil
+}
+
+func GetGradeById(id uint) (*Grade, error) {
+	var grade Grade
+	result := db.Preload("Student").Preload("Subject").First(&grade, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &grade, nil
 }

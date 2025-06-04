@@ -19,6 +19,6 @@ func NewRepository() *repository {
 	database.Connect()
 	db := database.GetDB()
 	repository := repository{db}
-
+	db.AutoMigrate(&Notification{})
 	return &repository
 }

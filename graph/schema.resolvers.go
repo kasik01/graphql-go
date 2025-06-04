@@ -214,7 +214,44 @@ func (r *mutationResolver) AddGrade(ctx context.Context, input model.NewGradeInp
 
 // UpdateGrade is the resolver for the updateGrade field.
 func (r *mutationResolver) UpdateGrade(ctx context.Context, id string, input model.UpdateGradeInput) (*model.Grade, error) {
-	panic(fmt.Errorf("not implemented: UpdateGrade - updateGrade"))
+	uintId64, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalide grade id")
+	}
+
+	updateGrade := database.Grade{
+		Score: input.Score,
+	}
+	idUint := uint(uintId64)
+
+	isSuccess, err := updateGrade.UpdateGrade(idUint)
+	if err != nil && !isSuccess {
+		return nil, err
+	}
+
+	updatedGrade, err := database.GetGradeById(idUint)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Grade{
+		ID: id,
+		Subject: &model.Subject{
+			ID:        strconv.FormatUint(uint64(updatedGrade.Subject.ID), 10),
+			SubjectID: updatedGrade.Subject.SubjectID,
+			Name:      updatedGrade.Subject.Name,
+		},
+		Student: &model.Student{
+			ID:          id,
+			StudentID:   updatedGrade.Student.StudentID,
+			Name:        updatedGrade.Student.Name,
+			DateOfBirth: updatedGrade.Student.DateOfBirth,
+			Gender:      model.Gender(updatedGrade.Student.Gender),
+			Class:       updatedGrade.Student.Class,
+		},
+		GradeType: model.GradeType(updatedGrade.GradeType),
+		Score:     updatedGrade.Score,
+	}, nil
 }
 
 // DeleteGrade is the resolver for the deleteGrade field.

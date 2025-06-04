@@ -2,35 +2,37 @@ package notification
 
 import (
 	"fmt"
+	"graphql-hasura-demo/internal/dto/hasura"
 )
 
 type Service struct {
 	repository *repository
 }
 
-func (s *Service) NotifyTaskUpdated(payload TaskUpdatedEvent) (*TaskUpdatedEventResponse, error) {
-	if payload.Event.Data.New.IsCompleted == payload.Event.Data.Old.IsCompleted {
-		return &TaskUpdatedEventResponse{
+func (s *Service) NotifyTaskUpdated(payload hasura.UpdatedEventRequest[Grade]) (*hasura.UpdatedEventResponse, error) {
+	fmt.Printf("Payload: %v\n", payload)
+	newScore := payload.Event.Data.New.Score
+	oldScore := payload.Event.Data.Old.Score
+	studentId := payload.Event.Data.Old.StudentId
+
+	if newScore == oldScore {
+		return &hasura.UpdatedEventResponse{
 			Status:  "success",
-			Message: "Status is not updated",
+			Message: "Score is not updated",
 		}, nil
 	}
 
-	status := "incomplete"
-	if payload.Event.Data.New.IsCompleted {
-		status = "complete"
-	}
-	message := fmt.Sprintf("Task '%s' status changed to: %s", payload.Event.Data.New.Description, status)
-	notification := NewNotification(message, payload.Event.Data.New.UserId)
+	message := fmt.Sprintf("Score's studentId: %d --- %.2f changed to %.2f", studentId, newScore, oldScore)
+	notification := NewNotification(message, payload.Event.Data.New.StudentId)
 	_, err := s.repository.save(notification)
 	if err != nil {
-		return &TaskUpdatedEventResponse{
+		return &hasura.UpdatedEventResponse{
 			Status:  "error",
 			Message: "Failed to create notification",
 		}, nil
 	}
 
-	return &TaskUpdatedEventResponse{
+	return &hasura.UpdatedEventResponse{
 		Status:  "success",
 		Message: "Notification created",
 	}, nil

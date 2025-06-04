@@ -6,6 +6,7 @@ import (
 	"graphql-hasura-demo/internal/auth"
 	"graphql-hasura-demo/internal/base"
 	"graphql-hasura-demo/internal/config"
+	"graphql-hasura-demo/internal/notification"
 	"graphql-hasura-demo/internal/user"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -36,6 +37,7 @@ func main() {
 
 	user.NewRouter(ginRouter).Init()
 	auth.NewRouter(ginRouter).Init()
+	notification.NewRouter(ginRouter).Init()
 	// ginRouter.Run(":3000")
 	// fmt.Println("Server/REST running on port: 3000")
 

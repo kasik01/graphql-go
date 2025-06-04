@@ -1,4 +1,4 @@
-package dto
+package hasura
 
 type HasuraRequest[T any] struct {
 	Action struct {

@@ -2,7 +2,7 @@ package user
 
 import (
 	"graphql-hasura-demo/internal/base"
-	"graphql-hasura-demo/internal/dto"
+	"graphql-hasura-demo/internal/dto/hasura"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +13,7 @@ type controller struct {
 }
 
 func (c *controller) Register(ctx *gin.Context) {
-	var request dto.HasuraRequest[RegisterUserRequest]
+	var request hasura.HasuraRequest[RegisterUserRequest]
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		ctx.Error(&Errors.InvalidRegisterPayload)

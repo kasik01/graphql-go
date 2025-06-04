@@ -2,7 +2,7 @@ package auth
 
 import (
 	"graphql-hasura-demo/internal/base"
-	"graphql-hasura-demo/internal/dto"
+	"graphql-hasura-demo/internal/dto/hasura"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +13,7 @@ type controller struct {
 }
 
 func (c *controller) login(ctx *gin.Context) {
-	var request dto.HasuraRequest[LoginRequest]
+	var request hasura.HasuraRequest[LoginRequest]
 
 	if err := ctx.BindJSON(&request); err != nil {
 		ctx.Error(&Errors.InvalidLoginRequest)
